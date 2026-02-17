@@ -191,6 +191,67 @@ const importData = async () => {
         await createQuota(phhCard);
         await createQuota(aayCard);
 
+        console.log('📜 Creating Sample Transactions...');
+
+        const createSampleTransaction = async (card, itemsList) => {
+            const txItems = [];
+
+            // Get Quota
+            const quota = await MonthlyQuota.findOne({
+                rationCardId: card._id,
+                month,
+                year
+            });
+
+            if (!quota) return;
+
+            // Prepare Items
+            for (const item of itemsList) {
+                const pId = pMap[item.name];
+                if (pId && quota.balance.get(pId.toString()) >= item.qty) {
+                    const product = products.find(p => p._id.equals(pId));
+                    const price = product.price * item.qty;
+
+                    txItems.push({
+                        productId: pId,
+                        quantity: item.qty,
+                        price: price
+                    });
+
+                    // Update Quota in Memory
+                    const currentTaken = quota.taken.get(pId.toString()) || 0;
+                    const currentBalance = quota.balance.get(pId.toString()) || 0;
+
+                    quota.taken.set(pId.toString(), currentTaken + item.qty);
+                    quota.balance.set(pId.toString(), Math.max(0, currentBalance - item.qty));
+                }
+            }
+
+            if (txItems.length > 0) {
+                await quota.save();
+
+                await Transaction.create({
+                    transactionNumber: 'TX' + Date.now() + Math.random().toString().substr(2, 4),
+                    rationCardId: card._id,
+                    shopId: shop._id,
+                    dealerId: dealer._id,
+                    items: txItems,
+                    remainingBalance: quota.balance,
+                    month,
+                    year,
+                    authMethod: 'biometric',
+                    status: 'success',
+                    date: new Date()
+                });
+            }
+        };
+
+        // Transaction 1: 5kg Rice
+        await createSampleTransaction(phhCard, [{ name: 'Rice', qty: 5 }]);
+
+        // Transaction 2: 1kg Sugar, 1ltr Oil
+        await createSampleTransaction(phhCard, [{ name: 'Sugar', qty: 1 }, { name: 'Oil', qty: 1 }]);
+
         console.log('✅ Data Imported Successfully!');
         console.log('---------- CREDENTIALS ----------');
         console.log('Dealer: dealer001 / password123');
