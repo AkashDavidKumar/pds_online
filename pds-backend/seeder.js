@@ -7,8 +7,7 @@ import RationCard from './models/RationCard.js';
 import Product from './models/Product.js';
 import EntitlementRule from './models/EntitlementRule.js';
 import Shop from './models/Shop.js';
-import ShopInventory from './models/ShopInventory.js';
-import Dealer from './models/Dealer.js';
+import Inventory from './models/Inventory.js';
 import MonthlyQuota from './models/MonthlyQuota.js';
 import Transaction from './models/Transaction.js';
 import Complaint from './models/Complaint.js';
@@ -20,21 +19,20 @@ connectDB();
 
 const importData = async () => {
     try {
-        console.log('🗑️  Clearing Database...');
+        console.log('🗑️  Clearing Database for Real-World Upgrade...');
         await User.deleteMany();
         await RationCard.deleteMany();
         await Product.deleteMany();
         await EntitlementRule.deleteMany();
         await Shop.deleteMany();
-        await ShopInventory.deleteMany();
-        await Dealer.deleteMany();
+        await Inventory.deleteMany();
         await MonthlyQuota.deleteMany();
         await Transaction.deleteMany();
         await Complaint.deleteMany();
 
         console.log('📦 Creating Products...');
         const products = await Product.insertMany([
-            { name: 'Rice', unit: 'kg', price: 0 }, // Free usually
+            { name: 'Rice', unit: 'kg', price: 0 },
             { name: 'Sugar', unit: 'kg', price: 25 },
             { name: 'Wheat', unit: 'kg', price: 0 },
             { name: 'Oil', unit: 'ltr', price: 25 },
@@ -42,85 +40,46 @@ const importData = async () => {
             { name: 'Dal', unit: 'kg', price: 30 },
         ]);
 
-        // Map for easy access
         const pMap = {};
         products.forEach(p => pMap[p.name] = p._id);
 
         console.log('📜 Creating Entitlement Rules...');
         await EntitlementRule.insertMany([
-            {
-                cardType: 'PHH',
-                ricePerPerson: 5,
-                fixedRice: 0,
-                sugar: 2,
-                wheat: 5,
-                oil: 1
-            },
-            {
-                cardType: 'AAY',
-                ricePerPerson: 0,
-                fixedRice: 35,
-                sugar: 2,
-                wheat: 0,
-                oil: 1
-            },
-            {
-                cardType: 'NPHH',
-                ricePerPerson: 0,
-                fixedRice: 20,
-                sugar: 1,
-                wheat: 0,
-                oil: 0
-            },
-            {
-                cardType: 'NPHH-S', // Sugar only card
-                ricePerPerson: 0,
-                fixedRice: 0,
-                sugar: 2,
-                wheat: 0,
-                oil: 0
-            }
+            { cardType: 'PHH', ricePerPerson: 5, sugar: 2, wheat: 5, oil: 1 },
+            { cardType: 'AAY', fixedRice: 35, sugar: 2, wheat: 0, oil: 1 },
+            { cardType: 'NPHH', fixedRice: 20, sugar: 1, wheat: 0, oil: 0 },
+            { cardType: 'NPHH-S', fixedRice: 0, sugar: 2, wheat: 0, oil: 0 }
         ]);
+
+        console.log('🧑‍⚖️  Creating Dealer User...');
+        const dealerUser = await User.create({
+            rationCardNumber: 'DEALER001',
+            mobileNumber: '9876543210',
+            password: 'password123',
+            role: 'dealer',
+        });
 
         console.log('🏪 Creating Shop...');
         const shop = await Shop.create({
-            fpsCode: 'FPS-001',
-            name: 'PDS Shop 001 - Chennai',
-            dealerName: 'Ramesh Kumar',
-            location: {
-                latitude: 13.0827,
-                longitude: 80.2707,
-                address: '123, Anna Salai, Chennai'
-            }
+            name: 'Anna Nagar FPS - Shop #42',
+            location: '12th Main Road, Anna Nagar, Chennai',
+            dealerId: dealerUser._id,
+            fpsCode: 'FPS-AN-42'
         });
 
-        console.log('📦 Creating Shop Inventory...');
-        const inventoryItems = products.map(p => ({
+        // 🔥 LINK DEALER TO SHOP
+        await User.findByIdAndUpdate(dealerUser._id, { shopId: shop._id });
+
+        console.log('📦 Initializing Shop Inventory (V2 Flattened)...');
+        await Inventory.create({
             shopId: shop._id,
-            productId: p._id,
-            stock: 1000 // Initial stock 1000 for everything
-        }));
-        await ShopInventory.insertMany(inventoryItems);
-
-        console.log('👨‍💼 Creating Dealer...');
-        const dealer = await Dealer.create({
-            name: 'Ramesh Kumar',
-            mobileNumber: '9876543210',
-            username: 'dealer001',
-            password: 'password123',
-            shopId: shop._id
+            riceStock: 1000,
+            wheatStock: 500,
+            sugarStock: 200,
+            dalStock: 200
         });
 
-        // Create a Dealer User for login
-        await User.create({
-            rationCardNumber: 'DEALER001', // Dummy
-            mobileNumber: dealer.mobileNumber,
-            password: 'password123',
-            role: 'dealer',
-            address: shop.location.address
-        });
-
-        console.log('💳 Creating Ration Cards & Users...');
+        console.log('💳 Creating Ration Cards & Linked Users...');
 
         const createBeneficiary = async (cardType, cardNo, members, mobile) => {
             const rc = await RationCard.create({
@@ -132,12 +91,13 @@ const importData = async () => {
                 familyMembers: members
             });
 
-            await User.create({
+            const user = await User.create({
                 rationCardNumber: cardNo,
                 mobileNumber: mobile,
                 password: 'password123',
                 role: 'beneficiary',
                 rationCardId: rc._id,
+                shopId: shop._id, // LINKED DIRECTLY
                 biometricEnabled: true,
                 biometricRegisteredAt: new Date()
             });
@@ -145,7 +105,6 @@ const importData = async () => {
             return rc;
         };
 
-        // 1. PHH Family (4 members)
         const phhCard = await createBeneficiary('PHH', 'PHH1234567890', [
             { name: 'Senthil', age: 45, relation: 'Head', aadhaarNumber: '111122223333' },
             { name: 'Lakshmi', age: 40, relation: 'Spouse', aadhaarNumber: '444455556666' },
@@ -153,7 +112,6 @@ const importData = async () => {
             { name: 'Divya', age: 18, relation: 'Daughter', aadhaarNumber: '000011112222' }
         ], '9000011111');
 
-        // 2. AAY Family (2 members)
         const aayCard = await createBeneficiary('AAY', 'AAY0987654321', [
             { name: 'Murugan', age: 60, relation: 'Head', aadhaarNumber: '333344445555' },
             { name: 'Valli', age: 55, relation: 'Spouse', aadhaarNumber: '666677778888' }
@@ -165,11 +123,7 @@ const importData = async () => {
         const year = currentDate.getFullYear();
 
         const createQuota = async (rc) => {
-            // Re-using logic via direct calculation
-            // Note: In real app, we re-use controller logic, but here we just replicate or call helper
-            // Since I exported calculateEntitlementMap from controller, I can use it!
             const eligibleMap = await calculateEntitlementMap(rc);
-
             const takenMap = {};
             const balanceMap = {};
 
@@ -191,77 +145,16 @@ const importData = async () => {
         await createQuota(phhCard);
         await createQuota(aayCard);
 
-        console.log('📜 Creating Sample Transactions...');
-
-        const createSampleTransaction = async (card, itemsList) => {
-            const txItems = [];
-
-            // Get Quota
-            const quota = await MonthlyQuota.findOne({
-                rationCardId: card._id,
-                month,
-                year
-            });
-
-            if (!quota) return;
-
-            // Prepare Items
-            for (const item of itemsList) {
-                const pId = pMap[item.name];
-                if (pId && quota.balance.get(pId.toString()) >= item.qty) {
-                    const product = products.find(p => p._id.equals(pId));
-                    const price = product.price * item.qty;
-
-                    txItems.push({
-                        productId: pId,
-                        quantity: item.qty,
-                        price: price
-                    });
-
-                    // Update Quota in Memory
-                    const currentTaken = quota.taken.get(pId.toString()) || 0;
-                    const currentBalance = quota.balance.get(pId.toString()) || 0;
-
-                    quota.taken.set(pId.toString(), currentTaken + item.qty);
-                    quota.balance.set(pId.toString(), Math.max(0, currentBalance - item.qty));
-                }
-            }
-
-            if (txItems.length > 0) {
-                await quota.save();
-
-                await Transaction.create({
-                    transactionNumber: 'TX' + Date.now() + Math.random().toString().substr(2, 4),
-                    rationCardId: card._id,
-                    shopId: shop._id,
-                    dealerId: dealer._id,
-                    items: txItems,
-                    remainingBalance: quota.balance,
-                    month,
-                    year,
-                    authMethod: 'biometric',
-                    status: 'success',
-                    date: new Date()
-                });
-            }
-        };
-
-        // Transaction 1: 5kg Rice
-        await createSampleTransaction(phhCard, [{ name: 'Rice', qty: 5 }]);
-
-        // Transaction 2: 1kg Sugar, 1ltr Oil
-        await createSampleTransaction(phhCard, [{ name: 'Sugar', qty: 1 }, { name: 'Oil', qty: 1 }]);
-
-        console.log('✅ Data Imported Successfully!');
+        console.log('✅ Real-World Data Seeded Successfully!');
         console.log('---------- CREDENTIALS ----------');
-        console.log('Dealer: dealer001 / password123');
+        console.log('Dealer: DEALER001 / password123');
         console.log('PHH User: PHH1234567890 / password123');
         console.log('AAY User: AAY0987654321 / password123');
         console.log('---------------------------------');
 
         process.exit();
     } catch (error) {
-        console.error(`❌ Error: ${error.message}`);
+        console.error(`❌ Error seeding system: ${error.message}`);
         process.exit(1);
     }
 };

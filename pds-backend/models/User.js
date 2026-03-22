@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema(
     {
+        name: {
+            type: String,
+        },
         rationCardNumber: {
             type: String,
             required: true,
@@ -12,6 +15,12 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true,
             unique: true,
+        },
+        email: {
+            type: String,
+            trim: true,
+            lowercase: true,
+            sparse: true, // allows null/undefined for existing users
         },
         password: {
             type: String,
@@ -36,6 +45,35 @@ const userSchema = new mongoose.Schema(
         address: {
             type: String,
         },
+        cardType: {
+            type: String,
+            enum: ['PHH', 'AAY', 'NPHH', 'NPHH-NC'],
+            default: 'NPHH',
+        },
+        shopId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Shop',
+        },
+        lastResetMonth: { type: String, default: '' },
+        isFrozen: { type: Boolean, default: false },
+        overrideQuota: {
+            type: Map,
+            of: Number,
+            default: {}
+        },
+        familyMembers: [
+            {
+                name: { type: String, required: true },
+                age: { type: Number, required: true },
+                relation: { 
+                    type: String, 
+                    required: true,
+                    enum: ['Head of Family', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Other']
+                },
+                status: { type: String, enum: ['active', 'pending'], default: 'active' },
+                enrolledAt: { type: Date, default: Date.now }
+            }
+        ],
     },
     {
         timestamps: true,

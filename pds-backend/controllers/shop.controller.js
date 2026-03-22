@@ -1,66 +1,53 @@
 import Shop from '../models/Shop.js';
-import ShopInventory from '../models/ShopInventory.js';
-import RationCard from '../models/RationCard.js';
 
-// @desc    Get Shop Metadata & Inventory for the logged-in user's assigned shop
-// @route   GET /api/shop/my-stock
-// @access  Private (Beneficiary)
-const getMyShopStock = async (req, res, next) => {
-    try {
-        // 1. Get User's Ration Card to find assigned shop
-        const rationCard = await RationCard.findById(req.user.rationCardId);
-
-        if (!rationCard) {
-            res.status(404);
-            throw new Error('Ration Card not linked to user');
-        }
-
-        const shopId = rationCard.shopId;
-
-        // 2. Fetch Shop Details
-        const shop = await Shop.findById(shopId);
-        if (!shop) {
-            res.status(404);
-            throw new Error('Assigned Shop not found');
-        }
-
-        // 3. Fetch Inventory with Product Details
-        const inventory = await ShopInventory.find({ shopId }).populate('productId', 'name unit price');
-
-        // 4. Format response
-        const formattedInventory = inventory.map(item => ({
-            productId: item.productId._id,
-            name: item.productId.name,
-            unit: item.productId.unit,
-            price: item.productId.price,
-            stock: item.stock
-        }));
-
-        res.json({
-            shop: {
-                name: shop.name,
-                fpsCode: shop.fpsCode,
-                dealerName: shop.dealerName,
-                location: shop.location
-            },
-            inventory: formattedInventory
-        });
-
-    } catch (error) {
-        next(error);
-    }
+// @desc    Create a new shop
+// @route   POST /api/shops
+// @access  Private/Admin
+export const createShop = async (req, res) => {
+  try {
+    const { name, location, dealerId, fpsCode } = req.body;
+    
+    const shop = await Shop.create({
+      name,
+      location,
+      dealerId,
+      fpsCode
+    });
+    
+    res.status(201).json(shop);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// @desc    Get All Shops (Admin/Map View)
-// @route   GET /api/shop
-// @access  Public
-const getAllShops = async (req, res, next) => {
-    try {
-        const shops = await Shop.find({});
-        res.json(shops);
-    } catch (error) {
-        next(error);
+// @desc    Get shop details by ID
+// @route   GET /api/shops/:id
+// @access  Private
+export const getShopById = async (req, res) => {
+  try {
+    const shop = await Shop.findById(req.params.id).populate('dealerId', 'name mobileNumber');
+    if (!shop) {
+      return res.status(404).json({ message: 'Shop not found' });
     }
+    res.json(shop);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-export { getMyShopStock, getAllShops };
+// @desc    Assign a dealer to a shop
+// @route   PUT /api/shops/:id/assign
+// @access  Private/Admin
+export const assignDealerToShop = async (req, res) => {
+  try {
+    const { dealerId } = req.body;
+    const shop = await Shop.findByIdAndUpdate(
+      req.params.id,
+      { dealerId },
+      { new: true }
+    );
+    res.json(shop);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

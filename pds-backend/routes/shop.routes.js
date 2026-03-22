@@ -1,10 +1,15 @@
 import express from 'express';
-import { getMyShopStock, getAllShops } from '../controllers/shop.controller.js';
+import { 
+  createShop, 
+  getShopById, 
+  assignDealerToShop 
+} from '../controllers/shop.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-router.get('/my-stock', protect, getMyShopStock);
-router.get('/', getAllShops);
+router.post('/', protect, createShop);
+router.get('/:id', protect, getShopById);
+router.put('/:id/assign', protect, assignDealerToShop);
 
 export default router;

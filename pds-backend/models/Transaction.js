@@ -4,8 +4,10 @@ const transactionSchema = new mongoose.Schema(
     {
         transactionNumber: { type: String, required: true, unique: true },
         rationCardId: { type: mongoose.Schema.Types.ObjectId, ref: 'RationCard', required: true },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
-        dealerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Dealer' }, // Can be null if automated/system
+        slotId: { type: mongoose.Schema.Types.ObjectId, ref: 'Slot' },
+        dealerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Dealer' }, 
         items: [
             {
                 productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -14,6 +16,7 @@ const transactionSchema = new mongoose.Schema(
             },
         ],
         remainingBalance: { type: Map, of: Number }, // Snapshot of balance after tx
+        entitlementSnapshot: { type: Map, of: Number }, // Snapshot of TOTAL quota at tx time
         month: { type: Number, required: true },
         year: { type: Number, required: true },
         authMethod: {
@@ -23,8 +26,8 @@ const transactionSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['success', 'failed'],
-            default: 'success',
+            enum: ['success', 'failed', 'completed'],
+            default: 'completed',
         },
         date: { type: Date, default: Date.now },
     },

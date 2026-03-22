@@ -1,22 +1,29 @@
 import mongoose from 'mongoose';
 import Transaction from '../models/Transaction.js';
 import MonthlyQuota from '../models/MonthlyQuota.js';
-import ShopInventory from '../models/ShopInventory.js';
+import Inventory from '../models/Inventory.js';
 import RationCard from '../models/RationCard.js';
 import EntitlementRule from '../models/EntitlementRule.js';
 import Product from '../models/Product.js';
+import User from '../models/User.js'; // Added User import
 import PDFDocument from 'pdfkit';
 
-// Helper to auto-create quota (duplicated logic to ensure atomic session usage)
+import { calculateTotalQuota, resetUserQuotaIfNeeded } from '../utils/quotaCalculator.js';
+
+// Helper to auto-create quota (TN PDS Enhanced)
 const ensureMonthlyQuota = async (rationCardId, month, year, session) => {
     let quota = await MonthlyQuota.findOne({ rationCardId, month, year }).session(session);
 
     if (!quota) {
-        const rationCard = await RationCard.findById(rationCardId).session(session);
-        if (!rationCard) throw new Error('Ration Card not found');
+        // Find User linked to this Ration Card
+        const user = await User.findOne({ rationCardId }).session(session);
+        if (!user) throw new Error('User/Beneficiary not found for this card');
 
-        const rule = await EntitlementRule.findOne({ cardType: rationCard.cardType }).session(session);
+        // PRODUCTION: Reset if month changed before calculating
+        await resetUserQuotaIfNeeded(user);
+
         const products = await Product.find({}).session(session);
+        const calcQuota = calculateTotalQuota(user);
 
         const eligibleMap = new Map();
         const takenMap = new Map();
@@ -26,32 +33,23 @@ const ensureMonthlyQuota = async (rationCardId, month, year, session) => {
         const productMap = {};
         products.forEach(p => productMap[p.name] = p._id);
 
-        if (rule) {
-            // Rice
-            let riceQty = 0;
-            if (rule.fixedRice > 0) riceQty = rule.fixedRice;
-            else riceQty = rule.ricePerPerson * rationCard.familyMembers.length;
-
-            if (productMap['Rice'] && riceQty > 0) {
-                eligibleMap.set(productMap['Rice'].toString(), riceQty);
-                balanceMap.set(productMap['Rice'].toString(), riceQty);
-                takenMap.set(productMap['Rice'].toString(), 0);
+        const addCalculated = (name, qty) => {
+            if (qty > 0 && productMap[name]) {
+                const pId = productMap[name].toString();
+                eligibleMap.set(pId, qty);
+                balanceMap.set(pId, qty);
+                takenMap.set(pId, 0);
             }
+        };
 
-            const addFixed = (name, qty) => {
-                if (qty > 0 && productMap[name]) {
-                    eligibleMap.set(productMap[name].toString(), qty);
-                    balanceMap.set(productMap[name].toString(), qty);
-                    takenMap.set(productMap[name].toString(), 0);
-                }
-            };
+        addCalculated('Rice', calcQuota.rice);
+        addCalculated('Wheat', calcQuota.wheat);
+        addCalculated('Sugar', calcQuota.sugar);
+        addCalculated('Dal', calcQuota.dal);
+        addCalculated('Oil', 1); // Fixed default for TN PDS if not in calc
 
-            addFixed('Sugar', rule.sugar);
-            addFixed('Wheat', rule.wheat);
-            addFixed('Oil', rule.oil);
-        }
-
-        // Upsert to be safe against race conditions
+        // Upsert to be safe
+        // against race conditions
         quota = await MonthlyQuota.findOneAndUpdate(
             { rationCardId, month, year },
             {
@@ -101,10 +99,19 @@ const distributeRations = async (req, res, next) => {
         const year = date.getFullYear();
 
         const quota = await ensureMonthlyQuota(rationCard._id, month, year, session);
+        
+        // PRODUCTION: Snapshot current entitlements for history
+        const userForSnapshot = await User.findOne({ rationCardId: rationCard._id }).session(session);
+        const snapshotRaw = calculateTotalQuota(userForSnapshot);
+        const entitlementSnapshot = new Map(Object.entries(snapshotRaw));
 
         // 3. Process Items
         const transactionItems = [];
         let totalAmount = 0;
+
+        // Fetch flattened inventory for the shop
+        const inventory = await Inventory.findOne({ shopId }).session(session);
+        if (!inventory) throw new Error('Shop inventory not initialized');
 
         for (const item of items) {
             const { productId, quantity } = item;
@@ -115,20 +122,30 @@ const distributeRations = async (req, res, next) => {
                 throw new Error(`Exceeds balance for product ${productId}`);
             }
 
-            // Check Shop Inventory
-            const inventory = await ShopInventory.findOne({ shopId, productId }).session(session);
-            if (!inventory || inventory.stock < quantity) {
-                throw new Error(`Insufficient shop stock for product ${productId}`);
+            // Get Product Details to know which stock to reduce
+            const product = await Product.findById(productId).session(session);
+            if (!product) throw new Error(`Product not found: ${productId}`);
+
+            const prodName = product.name.toLowerCase();
+            let stockField = '';
+            
+            if (prodName.includes('rice')) stockField = 'riceStock';
+            else if (prodName.includes('wheat')) stockField = 'wheatStock';
+            else if (prodName.includes('sugar')) stockField = 'sugarStock';
+            else if (prodName.includes('dal') || prodName.includes('urad') || prodName.includes('toor')) stockField = 'dalStock';
+
+            if (stockField && inventory[stockField] < quantity) {
+                throw new Error(`Insufficient shop stock for ${product.name}. Available: ${inventory[stockField]}kg`);
             }
 
-            // Get Price for Tax/Total
-            const product = await Product.findById(productId).session(session);
+            // Price calculation
             const price = product.price * quantity;
 
             // Updates
-            // A. Decrement Shop Stock
-            inventory.stock -= quantity;
-            await inventory.save({ session });
+            // A. Decrement Shop Stock (Flattened Inventory)
+            if (stockField) {
+                inventory[stockField] -= quantity;
+            }
 
             // B. Update Quota
             const newTaken = (quota.taken.get(productId) || 0) + quantity;
@@ -144,6 +161,10 @@ const distributeRations = async (req, res, next) => {
             });
             totalAmount += price;
         }
+
+        // Save Inventory Updates
+        inventory.lastUpdated = Date.now();
+        await inventory.save({ session });
 
         // Check if fully collected
         let allZero = true;
@@ -165,6 +186,7 @@ const distributeRations = async (req, res, next) => {
             dealerId: dealer.role === 'dealer' ? dealer._id : null,
             items: transactionItems,
             remainingBalance: quota.balance,
+            entitlementSnapshot: entitlementSnapshot,
             month,
             year,
             authMethod,
@@ -187,17 +209,22 @@ const distributeRations = async (req, res, next) => {
 // @access  Private
 const getUserTransactions = async (req, res, next) => {
     try {
-        if (!req.user.rationCardId) {
-            res.status(404);
-            throw new Error('User not linked to Ration Card');
+        const user = req.user;
+        let query = {};
+
+        if (user.role === 'dealer' || user.role === 'admin') {
+            query = { shopId: user.shopId };
+        } else {
+            // Beneficiary sees only their transactions by userId (Single Source of Truth)
+            query = { userId: user._id };
         }
 
-        const transactions = await Transaction.find({ rationCardId: req.user.rationCardId })
+        const transactions = await Transaction.find(query)
             .sort({ date: -1 })
             .populate('items.productId', 'name unit')
-            .populate('shopId', 'name');
+            .populate('shopId', 'name location');
 
-        res.json(transactions);
+        res.status(200).json(transactions);
     } catch (error) {
         next(error);
     }
@@ -263,4 +290,28 @@ const getTransactionReceipt = async (req, res, next) => {
     }
 };
 
-export { distributeRations, getUserTransactions, getTransactionReceipt };
+// @desc    Get Dealer-Specific History (Last 3 Months)
+// @route   GET /api/transactions/dealer
+// @access  Private (Dealer)
+const getDealerTransactions = async (req, res, next) => {
+    try {
+        const dealerId = req.user._id;
+
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+        const transactions = await Transaction.find({
+            dealerId,
+            date: { $gte: threeMonthsAgo }
+        })
+        .sort({ date: -1 })
+        .populate('userId', 'name rationCardNumber')
+        .populate('shopId', 'name');
+
+        res.status(200).json(transactions);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export { distributeRations, getUserTransactions, getDealerTransactions, getTransactionReceipt };

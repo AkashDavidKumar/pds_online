@@ -27,13 +27,15 @@ const loginUser = async (req, res, next) => {
             }
 
             res.json({
-                _id: user._id,
-                rationCardNumber: user.rationCardNumber,
-                mobileNumber: user.mobileNumber,
-                role: user.role,
-                image: "https://cdn-icons-png.flaticon.com/512/149/149071.png", // Access token for avatar
                 token: generateToken(user._id),
-                ...extraData
+                user: {
+                    id: user._id,
+                    name: user.role === 'dealer' ? 'Dealer' : (extraData.headOfFamily || 'Resident'),
+                    role: user.role,
+                    shopId: user.shopId || (extraData.assignedShop ? extraData.assignedShop._id : null),
+                    rationCardNumber: user.rationCardNumber,
+                    ...extraData
+                }
             });
         } else {
             res.status(401);

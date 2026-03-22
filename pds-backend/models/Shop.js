@@ -1,18 +1,30 @@
 import mongoose from 'mongoose';
 
 const shopSchema = new mongoose.Schema(
-    {
-        fpsCode: { type: String, required: true, unique: true },
-        name: { type: String, required: true },
-        dealerName: { type: String, required: true },
-        location: {
-            latitude: Number,
-            longitude: Number,
-            address: String,
-        },
+  {
+    name: {
+      type: String,
+      required: true,
     },
-    { timestamps: true }
+    location: {
+      type: String,
+      required: true,
+    },
+    dealerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    fpsCode: {
+      type: String,
+      unique: true,
+    }
+  },
+  {
+    timestamps: true,
+  }
 );
 
 const Shop = mongoose.model('Shop', shopSchema);
+
 export default Shop;
