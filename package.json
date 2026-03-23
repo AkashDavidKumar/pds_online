@@ -1,0 +1,18 @@
+{
+  "name": "pds-system",
+  "version": "1.0.0",
+  "description": "Tamil Nadu Digital Public Distribution System (TNPDS) — Full Stack",
+  "scripts": {
+    "client": "cd pds-web-frontend && npm run dev",
+    "server": "cd pds-backend && npm run dev",
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run client\"",
+    "install:all": "npm install && cd pds-backend && npm install && cd ../pds-web-frontend && npm install",
+    "seed": "cd pds-backend && node seed.js"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["pds", "ration-system", "nodejs", "react", "mongodb"],
+  "author": "Akash David Kumar",
+  "license": "ISC"
+}
