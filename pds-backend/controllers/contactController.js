@@ -1,4 +1,5 @@
 import Contact from '../models/Contact.js';
+import Shop from '../models/Shop.js';
 import transporter from '../config/mailer.js';
 
 // @desc    Submit a contact message
@@ -171,7 +172,9 @@ export const deleteMessage = async (req, res) => {
 // @access  Private/Dealer
 export const getDealerMessages = async (req, res) => {
   try {
-    const messages = await Contact.find({ dealerId: req.user._id })
+    // Messages are saved with dealerId = user.shopId (the shop ObjectId)
+    // So we query the same way — by shopId
+    const messages = await Contact.find({ dealerId: req.user.shopId })
       .populate('userId', 'name rationCardNumber mobileNumber')
       .sort({ createdAt: -1 });
     res.status(200).json(messages);

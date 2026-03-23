@@ -31,6 +31,7 @@ export default function DealerUsers() {
     name: '',
     rationCardNumber: '',
     mobileNumber: '',
+    email: '',
     password: '',
     cardType: 'PHH',
     riceTotal: 0,
@@ -90,6 +91,7 @@ export default function DealerUsers() {
       name: '',
       rationCardNumber: '',
       mobileNumber: '',
+      email: '',
       password: '',
       cardType: 'PHH',
       riceTotal: 0,
@@ -314,6 +316,17 @@ export default function DealerUsers() {
                              onChange={(e) => setFormData({...formData, mobileNumber: e.target.value})}
                            />
                         </div>
+                         <div className="space-y-1.5 sm:col-span-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address ✉️</label>
+                            <input 
+                              type="email"
+                              required={!editingUser}
+                              placeholder="beneficiary@example.com"
+                              className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold text-slate-800 transition-all"
+                              value={(formData as any).email || ''}
+                              onChange={(e) => setFormData({...formData, email: e.target.value} as any)}
+                            />
+                         </div>
                          <div className="space-y-1.5">
                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Password / Security PIN</label>
                            <input 

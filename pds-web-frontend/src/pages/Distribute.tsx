@@ -11,7 +11,8 @@ import {
   ArrowLeft,
   ShieldCheck,
   Fingerprint,
-  Phone
+  Phone,
+  Mail
 } from 'lucide-react';
 
 export default function Distribute() {
@@ -27,6 +28,7 @@ export default function Distribute() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
   const [error, setError] = useState('');
   
   const [items, setItems] = useState({
@@ -84,9 +86,10 @@ export default function Distribute() {
     setError('');
 
     try {
-      await API.post('/dealer/distribute', { slotId, items, authMethod: method });
+      const res = await API.post('/dealer/distribute', { slotId, items, authMethod: method });
+      setReceiptSent(res.data?.receiptSent === true);
       setSuccess(true);
-      setTimeout(() => navigate('/dealer/dashboard'), 3000);
+      setTimeout(() => navigate('/dealer/dashboard'), 4000);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Distribution failed. Check stock levels.');
     } finally {
@@ -128,7 +131,19 @@ export default function Distribute() {
                 <CheckCircle2 className="w-12 h-12" />
              </div>
              <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">Ration Issued!</h1>
-             <p className="text-slate-500 font-bold max-w-sm mx-auto mb-10 text-lg">Digital Receipt Generated & Inventory Updated. Returning to dashboard...</p>
+             <p className="text-slate-500 font-bold max-w-sm mx-auto mb-4 text-lg">Digital Receipt Generated & Inventory Updated.</p>
+             {receiptSent ? (
+               <div className="mb-8 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl px-6 py-3">
+                 <Mail className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                 <p className="text-emerald-700 font-black text-xs uppercase tracking-widest">Delivery receipt sent to beneficiary's email</p>
+               </div>
+             ) : (
+               <div className="mb-8 flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-6 py-3">
+                 <Phone className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                 <p className="text-amber-700 font-black text-xs uppercase tracking-widest">No email on file — receipt not dispatched</p>
+               </div>
+             )}
+             <p className="text-slate-400 text-sm mb-10">Returning to dashboard...</p>
              <button onClick={() => navigate('/dealer/dashboard')} className="px-10 py-4 bg-slate-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-xl">Back to Base</button>
           </div>
         ) : (

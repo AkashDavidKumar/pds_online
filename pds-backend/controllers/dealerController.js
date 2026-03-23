@@ -6,8 +6,9 @@ import Transaction from '../models/Transaction.js';
 import RationCard from '../models/RationCard.js';
 import Product from '../models/Product.js';
 import InventoryLog from '../models/InventoryLog.js';
+import Shop from '../models/Shop.js';
 import { calculateUsedQuota, calculateTotalQuota } from '../utils/quotaCalculator.js';
-import { generateOTP, hashOTP, verifyOTPHash, sendOTPEmail, maskEmail } from '../utils/otpUtils.js';
+import { generateOTP, hashOTP, verifyOTPHash, sendOTPEmail, maskEmail, sendReceiptEmail } from '../utils/otpUtils.js';
 import mongoose from 'mongoose';
 
 // @desc    Get today's slots (User list for Verify page)
@@ -227,8 +228,45 @@ export const distributeRation = async (req, res) => {
       reason: `Distribution to RC: ${user.rationCardNumber}`
     });
 
+    // 📧 Send distribution receipt email (non-blocking — errors are only logged)
+    if (user.email) {
+      try {
+        const usedAfter = await calculateUsedQuota(user._id);
+        const totalQ = await calculateTotalQuota(user);
+        const shop = await Shop.findById(req.user.shopId).select('name fpsCode');
+        const txNumber = 'PDS' + Date.now().toString().slice(-8);
+
+        await sendReceiptEmail(user.email, {
+          user: {
+            name: user.name,
+            rationCardNumber: user.rationCardNumber,
+            cardType: user.cardType,
+          },
+          shop,
+          items: {
+            rice: items.rice || 0,
+            wheat: items.wheat || 0,
+            sugar: items.sugar || 0,
+            dal: items.dal || 0,
+          },
+          remaining: {
+            rice: Math.max(0, totalQ.rice - usedAfter.rice),
+            wheat: Math.max(0, totalQ.wheat - usedAfter.wheat),
+            sugar: Math.max(0, totalQ.sugar - usedAfter.sugar),
+            dal: Math.max(0, totalQ.dal - usedAfter.dal),
+          },
+          transactionNumber: txNumber,
+          date: now,
+        });
+      } catch (emailErr) {
+        console.error('⚠️  Receipt email failed (non-critical):', emailErr.message);
+      }
+    } else {
+      console.warn(`⚠️  No email on record for ${user.name} — receipt not sent.`);
+    }
+
     console.log("✅ Distribution Complete:", user.rationCardNumber);
-    res.json({ success: true, message: 'Distribution finalized and reported to TNPDS server' });
+    res.json({ success: true, message: 'Distribution finalized and reported to TNPDS server', receiptSent: !!user.email });
 
   } catch (error) {
     console.error("❌ Distribution Error:", error);
@@ -370,6 +408,7 @@ export const verifySlot = async (req, res) => {
       const rationCard = await RationCard.findById(user.rationCardId);
       
       const totalQuota = await calculateTotalQuota(user);
+      const used = await calculateUsedQuota(user._id); // ✅ Fixed: was missing, caused ReferenceError
   
       res.json({
         user: {
@@ -379,7 +418,7 @@ export const verifySlot = async (req, res) => {
           cardType: user.cardType,
           mobileNumber: user.mobileNumber
         },
-        familyMembers: rationCard.familyMembers,
+        familyMembers: rationCard ? rationCard.familyMembers : [],
         quota: {
           eligible: {
             Rice: totalQuota.rice,
@@ -397,6 +436,7 @@ export const verifySlot = async (req, res) => {
         slotStatus: slot.status
       });
     } catch (error) {
+      console.error('❌ verifySlot error:', error);
       res.status(500).json({ message: error.message });
     }
 };

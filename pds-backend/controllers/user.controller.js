@@ -8,7 +8,7 @@ import { calculateUsedQuota, calculateTotalQuota, resetUserQuotaIfNeeded } from 
 // @access  Public
 const registerUser = async (req, res, next) => {
     try {
-        const { name, mobileNumber, password, rationCardNumber } = req.body;
+        const { name, email, mobileNumber, password, rationCardNumber } = req.body;
 
         const userExists = await User.findOne({ mobileNumber });
         if (userExists) {
@@ -18,6 +18,7 @@ const registerUser = async (req, res, next) => {
 
         const user = await User.create({
             name,
+            email,
             mobileNumber,
             password,
             rationCardNumber,
@@ -27,6 +28,7 @@ const registerUser = async (req, res, next) => {
             res.status(201).json({
                 _id: user._id,
                 name: user.name,
+                email: user.email,
                 mobileNumber: user.mobileNumber,
                 token: generateToken(user._id),
             });
@@ -55,6 +57,7 @@ const loginUser = async (req, res, next) => {
             res.json({
                 _id: user._id,
                 name: user.name,
+                email: user.email,
                 rationCardNumber: user.rationCardNumber,
                 mobileNumber: user.mobileNumber,
                 role: user.role,
@@ -90,6 +93,7 @@ const getUserProfile = async (req, res, next) => {
             res.json({
                 _id: user._id,
                 name: user.name,
+                email: user.email,
                 rationCardNumber: user.rationCardNumber,
                 mobileNumber: user.mobileNumber,
                 role: user.role,

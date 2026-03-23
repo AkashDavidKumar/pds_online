@@ -13,36 +13,37 @@ dotenv.config();
 
 async function seed() {
   const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/pds_online');
-  console.log('Connected to MongoDB for Seeding...');
+  console.log('✅ Connected to MongoDB for Seeding...');
 
   try {
-    // 1. Wipe everything
-    const collections = ['users', 'shops', 'products', 'inventories', 'rationcards', 'slots', 'transactions', 'inventorylogs'];
+    // 1. Wipe all collections (including OTPs to remove stale records)
+    const collections = ['users', 'shops', 'products', 'inventories', 'rationcards', 'slots', 'transactions', 'inventorylogs', 'otps'];
     for (const coll of collections) {
-      try { await conn.connection.collection(coll).drop(); } catch (e) {}
+      try { await conn.connection.collection(coll).drop(); } catch (e) { /* ignore non-existent */ }
     }
-    console.log('🗑️  Existing Collections Dropped');
+    console.log('🗑️  All Old Collections Dropped (including OTPs)');
 
     // 2. Products
     await Product.create([
-      { name: 'Rice', price: 0, unit: 'kg' },
-      { name: 'Wheat', price: 0, unit: 'kg' },
-      { name: 'Sugar', price: 25, unit: 'kg' },
+      { name: 'Rice',     price: 0,  unit: 'kg' },
+      { name: 'Wheat',    price: 0,  unit: 'kg' },
+      { name: 'Sugar',    price: 25, unit: 'kg' },
       { name: 'Urad Dal', price: 30, unit: 'kg' }
     ]);
     console.log('📦  Products Created');
 
-    // 3. Create Dealer User first to satisfy Shop's dealerId requirement
+    // 3. Dealer User — NOW WITH EMAIL ✅
     const dealer = await User.create({
       name: 'R. Rajesh Kumar',
       rationCardNumber: 'DEALER402',
       mobileNumber: '9876543210',
+      email: 'dealer402@pds.local',
       password: 'password123',
       role: 'dealer',
-      shopId: new mongoose.Types.ObjectId() // Placeholder
+      shopId: new mongoose.Types.ObjectId() // Placeholder, updated below
     });
 
-    // 4. Create Shop linked to dealer
+    // 4. Shop linked to dealer
     const shop = await Shop.create({
       name: 'Anna Nagar West FPS',
       location: 'Anna Nagar, Chennai',
@@ -50,7 +51,7 @@ async function seed() {
       fpsCode: '402-AN'
     });
 
-    // 5. Update Dealer with correct shopId
+    // 5. Update dealer with correct shopId
     dealer.shopId = shop._id;
     await dealer.save();
     console.log('🏪  Shop & Dealer Linked');
@@ -65,12 +66,52 @@ async function seed() {
     });
     console.log('💰  Shop Inventory Seeded');
 
-    // 7. Beneficiaries
+    // 7. Beneficiaries — ALL WITH VALID EMAILS ✅
     const rationCardsData = [
-      { cardNumber: '3301010001', cardType: 'PHH', headOfFamily: 'Suresh', headAadhaar: '112233445566' },
-      { cardNumber: '3301010002', cardType: 'AAY', headOfFamily: 'Mani', headAadhaar: '223344556677' },
-      { cardNumber: '3301010003', cardType: 'NPHH', headOfFamily: 'Anitha', headAadhaar: '334455667788' }
+      {
+        cardNumber: '3301010001',
+        cardType: 'PHH',
+        headOfFamily: 'Suresh',
+        headAadhaar: '112233445566',
+        email: 'suresh@test.com',
+        mobile: '9000010001',
+        familyMembers: [
+          { name: 'Suresh', age: 45, relation: 'Head of Family' },
+          { name: 'Akash',  age: 20, relation: 'Son' },
+          { name: 'David',  age: 21, relation: 'Son' }
+        ]
+      },
+      {
+        cardNumber: '3301010002',
+        cardType: 'AAY',
+        headOfFamily: 'Mani',
+        headAadhaar: '223344556677',
+        email: 'mani@test.com',
+        mobile: '9000010002',
+        familyMembers: [
+          { name: 'Mani',    age: 60, relation: 'Head of Family' },
+          { name: 'Kamala',  age: 55, relation: 'Spouse' }
+        ]
+      },
+      {
+        cardNumber: '3301010003',
+        cardType: 'NPHH',
+        headOfFamily: 'Anitha',
+        headAadhaar: '334455667788',
+        email: 'anitha@test.com',
+        mobile: '9000010003',
+        familyMembers: [
+          { name: 'Anitha', age: 38, relation: 'Head of Family' },
+          { name: 'Priya',  age: 15, relation: 'Daughter' }
+        ]
+      }
     ];
+
+    const quotaRules = {
+      PHH:  { r: 20, w: 5, s: 1, d: 1 },
+      AAY:  { r: 35, w: 0, s: 1, d: 1 },
+      NPHH: { r: 0,  w: 0, s: 1, d: 1 }
+    };
 
     const users = [];
     for (const data of rationCardsData) {
@@ -80,21 +121,16 @@ async function seed() {
         headOfFamily: data.headOfFamily,
         headAadhaarNumber: data.headAadhaar,
         shopId: shop._id,
-        familyMembers: [{ name: data.headOfFamily, age: 40, relation: 'Head' }]
+        familyMembers: data.familyMembers
       });
 
-      // Allocation Totals (Part of Single Source of Truth architecture)
-      const qRules = { 
-        'PHH': { r: 20, w: 5, s: 1, d: 1 }, 
-        'AAY': { r: 35, w: 0, s: 1, d: 1 }, 
-        'NPHH': { r: 0, w: 0, s: 1, d: 1 } 
-      };
-      const r = qRules[card.cardType];
+      const r = quotaRules[data.cardType];
 
       const user = await User.create({
         name: data.headOfFamily,
         rationCardNumber: data.cardNumber,
-        mobileNumber: '90000' + data.cardNumber.slice(-5),
+        mobileNumber: data.mobile,
+        email: data.email,          // ✅ EMAIL INCLUDED
         password: 'password123',
         role: 'beneficiary',
         rationCardId: card._id,
@@ -104,34 +140,42 @@ async function seed() {
         wheatTotal: r.w,
         sugarTotal: r.s,
         dalTotal: r.d,
-        address: 'Sector ' + data.cardNumber.slice(-1)
+        address: 'Anna Nagar, Chennai',
+        familyMembers: data.familyMembers
       });
       users.push(user);
     }
-    console.log('✅  Beneficiaries & Allocation Limits Created');
+    console.log('✅  Beneficiaries Created (all with emails)');
 
-    // 8. Daily Appointment Slots
+    // 8. Today's Appointment Slots
     const now = new Date();
+    const timeSlots = ['09:00 AM - 10:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM'];
     const slotsList = users.map((u, i) => ({
       userId: u._id,
       shopId: shop._id,
       date: now,
-      timeSlot: i === 0 ? '09:00 AM - 10:00 AM' : i === 1 ? '11:00 AM - 12:00 PM' : '02:00 PM - 03:00 PM',
+      timeSlot: timeSlots[i],
       status: 'booked'
     }));
 
     await Slot.create(slotsList);
-    console.log('📅  Today\'s Merchant Appointment Slots Seeded');
+    console.log('📅  Today\'s Appointment Slots Seeded');
 
-    console.log('\n🌟 🌟 🌟 SEEDING COMPLETE 🌟 🌟 🌟');
-    console.log('-----------------------------------');
-    console.log('Dealer Login: DEALER402 / password123');
-    console.log('User 1 Login: 3301010001 / password123 (PHH)');
-    console.log('User 2 Login: 3301010002 / password123 (AAY)');
-    console.log('-----------------------------------');
+    console.log('\n🌟 🌟 🌟  SEEDING COMPLETE  🌟 🌟 🌟');
+    console.log('──────────────────────────────────────────');
+    console.log('🔐 Dealer Login  : DEALER402 / password123');
+    console.log('   Email         : dealer402@pds.local');
+    console.log('──────────────────────────────────────────');
+    console.log('👤 Suresh (PHH)  : 3301010001 / password123');
+    console.log('   Email         : suresh@test.com');
+    console.log('👤 Mani (AAY)    : 3301010002 / password123');
+    console.log('   Email         : mani@test.com');
+    console.log('👤 Anitha (NPHH) : 3301010003 / password123');
+    console.log('   Email         : anitha@test.com');
+    console.log('──────────────────────────────────────────');
 
   } catch (error) {
-    console.error('❌  ERROR SEEDING:', JSON.stringify(error, null, 2) || error);
+    console.error('❌ ERROR SEEDING:', JSON.stringify(error, null, 2) || error.message);
   } finally {
     process.exit(0);
   }
