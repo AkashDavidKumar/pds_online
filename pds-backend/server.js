@@ -1,6 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 
 import userRoutes from './routes/user.routes.js';
@@ -22,6 +24,9 @@ import { getFamilyMembers } from './controllers/user.controller.js';
 import { errorHandler } from './middleware/error.middleware.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5002;
@@ -59,8 +64,13 @@ app.get('/api/receipt/:slotId', protect, generateOfficialReceipt);
 // Error Handling Middleware
 app.use(errorHandler);
 
-app.get('/', (req, res) => {
-  res.send('PDS Backend is running...');
+// Serve Static Assets from Frontend
+const frontendPath = path.join(__dirname, '../pds-web-frontend/dist');
+app.use(express.static(frontendPath));
+
+// Fallback for SPA Routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 app.listen(PORT, () => {
