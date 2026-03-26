@@ -32,81 +32,72 @@ async function seed() {
     ]);
     console.log('📦  Products Created');
 
-    // 3. Dealer User — NOW WITH EMAIL ✅
-    const dealer = await User.create({
+    // 3. Dealer Users — NOW WITH TWO DEALERS ✅
+    const dealer1 = await User.create({
       name: 'R. Rajesh Kumar',
       rationCardNumber: 'DEALER402',
       mobileNumber: '9876543210',
       email: 'dealer402@pds.local',
       password: 'password123',
       role: 'dealer',
-      shopId: new mongoose.Types.ObjectId() // Placeholder, updated below
+      shopId: new mongoose.Types.ObjectId() // Placeholder
     });
 
-    // 4. Shop linked to dealer
-    const shop = await Shop.create({
+    const dealer2 = await User.create({
+      name: 'Akash David kumar M',
+      rationCardNumber: 'DEALER505',
+      mobileNumber: '9876543211',
+      email: 'dealer505@pds.local',
+      password: 'password123',
+      role: 'dealer',
+      shopId: new mongoose.Types.ObjectId() // Placeholder
+    });
+
+    // 4. Shops linked to dealers
+    const shop1 = await Shop.create({
       name: 'Anna Nagar West FPS',
       location: 'Anna Nagar, Chennai',
-      dealerId: dealer._id,
+      dealerId: dealer1._id,
       fpsCode: '402-AN'
     });
 
-    // 5. Update dealer with correct shopId
-    dealer.shopId = shop._id;
-    await dealer.save();
-    console.log('🏪  Shop & Dealer Linked');
-
-    // 6. Inventory
-    await Inventory.create({
-      shopId: shop._id,
-      riceStock: 5000,
-      wheatStock: 2000,
-      sugarStock: 500,
-      dalStock: 300
+    const shop2 = await Shop.create({
+      name: 'Adyar East FPS',
+      location: 'Adyar, Chennai',
+      dealerId: dealer2._id,
+      fpsCode: '505-AD'
     });
-    console.log('💰  Shop Inventory Seeded');
 
-    // 7. Beneficiaries — ALL WITH VALID EMAILS ✅
-    const rationCardsData = [
+    // 5. Update dealers with correct shopIds
+    dealer1.shopId = shop1._id;
+    await dealer1.save();
+    dealer2.shopId = shop2._id;
+    await dealer2.save();
+    console.log('🏪  Two Shops & Dealers Linked');
+
+    // 6. Inventory for both shops
+    await Inventory.create([
       {
-        cardNumber: '3301010001',
-        cardType: 'PHH',
-        headOfFamily: 'Suresh',
-        headAadhaar: '112233445566',
-        email: 'suresh@test.com',
-        mobile: '9000010001',
-        familyMembers: [
-          { name: 'Suresh', age: 45, relation: 'Head of Family' },
-          { name: 'Akash',  age: 20, relation: 'Son' },
-          { name: 'David',  age: 21, relation: 'Son' }
-        ]
+        shopId: shop1._id,
+        riceStock: 5000,
+        wheatStock: 2000,
+        sugarStock: 500,
+        dalStock: 300
       },
       {
-        cardNumber: '3301010002',
-        cardType: 'AAY',
-        headOfFamily: 'Mani',
-        headAadhaar: '223344556677',
-        email: 'mani@test.com',
-        mobile: '9000010002',
-        familyMembers: [
-          { name: 'Mani',    age: 60, relation: 'Head of Family' },
-          { name: 'Kamala',  age: 55, relation: 'Spouse' }
-        ]
-      },
-      {
-        cardNumber: '3301010003',
-        cardType: 'NPHH',
-        headOfFamily: 'Anitha',
-        headAadhaar: '334455667788',
-        email: 'anitha@test.com',
-        mobile: '9000010003',
-        familyMembers: [
-          { name: 'Anitha', age: 38, relation: 'Head of Family' },
-          { name: 'Priya',  age: 15, relation: 'Daughter' }
-        ]
+        shopId: shop2._id,
+        riceStock: 4500,
+        wheatStock: 1800,
+        sugarStock: 400,
+        dalStock: 250
       }
-    ];
+    ]);
+    console.log('💰  Shop Inventories Seeded');
 
+    // 7. Beneficiaries — GENERATING 30+ BENEFICIARIES ✅
+    const cardTypes = ['PHH', 'AAY', 'NPHH'];
+    const names = ['Arun', 'Bala', 'Chitra', 'Deepa', 'Eshwar', 'Farooq', 'Ganesh', 'Hema', 'Indira', 'Jagan', 'Kavita', 'Lokesh', 'Meena', 'Nitin', 'Oviya', 'Prabhu', 'Qadir', 'Rani', 'Siva', 'Thara', 'Uday', 'Vani', 'Wilson', 'Xavier', 'Yuvraj', 'Zoya', 'Anand', 'Bhuvana', 'Chetan', 'Divya', 'Elango', 'Fathima'];
+    
     const quotaRules = {
       PHH:  { r: 20, w: 5, s: 1, d: 1 },
       AAY:  { r: 35, w: 0, s: 1, d: 1 },
@@ -114,47 +105,62 @@ async function seed() {
     };
 
     const users = [];
-    for (const data of rationCardsData) {
+    const shops = [shop1, shop2];
+
+    for (let i = 0; i < names.length; i++) {
+      const name = names[i];
+      const cardNumber = `330101${(1000 + i).toString()}`;
+      const mobile = `900001${(1000 + i).toString()}`;
+      const email = `${name.toLowerCase()}${i}@test.com`;
+      const aadhaar = `1122334455${(10 + i).toString()}`;
+      const cardType = cardTypes[i % cardTypes.length];
+      const shop = shops[i % shops.length];
+
+      const familyMembers = [
+        { name: name, age: 30 + (i % 20), relation: 'Head of Family' },
+        { name: `Member_${i}_1`, age: 20 + (i % 10), relation: i % 2 === 0 ? 'Spouse' : 'Son' }
+      ];
+
       const card = await RationCard.create({
-        cardNumber: data.cardNumber,
-        cardType: data.cardType,
-        headOfFamily: data.headOfFamily,
-        headAadhaarNumber: data.headAadhaar,
+        cardNumber,
+        cardType,
+        headOfFamily: name,
+        headAadhaarNumber: aadhaar,
         shopId: shop._id,
-        familyMembers: data.familyMembers
+        familyMembers
       });
 
-      const r = quotaRules[data.cardType];
+      const r = quotaRules[cardType];
 
       const user = await User.create({
-        name: data.headOfFamily,
-        rationCardNumber: data.cardNumber,
-        mobileNumber: data.mobile,
-        email: data.email,          // ✅ EMAIL INCLUDED
+        name,
+        rationCardNumber: cardNumber,
+        mobileNumber: mobile,
+        email,
         password: 'password123',
         role: 'beneficiary',
         rationCardId: card._id,
         shopId: shop._id,
-        cardType: card.cardType,
+        cardType,
         riceTotal: r.r,
         wheatTotal: r.w,
         sugarTotal: r.s,
         dalTotal: r.d,
-        address: 'Anna Nagar, Chennai',
-        familyMembers: data.familyMembers
+        address: shop.location,
+        familyMembers
       });
       users.push(user);
     }
-    console.log('✅  Beneficiaries Created (all with emails)');
+    console.log(`✅  ${users.length} Beneficiaries Created and distributed between 2 shops`);
 
-    // 8. Today's Appointment Slots
+    // 8. Today's Appointment Slots (Cyclic time slots)
     const now = new Date();
-    const timeSlots = ['09:00 AM - 10:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM'];
+    const timeSlots = ['09:00 AM - 10:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM', '03:00 PM - 04:00 PM'];
     const slotsList = users.map((u, i) => ({
       userId: u._id,
-      shopId: shop._id,
+      shopId: u.shopId,
       date: now,
-      timeSlot: timeSlots[i],
+      timeSlot: timeSlots[i % timeSlots.length],
       status: 'booked'
     }));
 
@@ -163,15 +169,18 @@ async function seed() {
 
     console.log('\n🌟 🌟 🌟  SEEDING COMPLETE  🌟 🌟 🌟');
     console.log('──────────────────────────────────────────');
-    console.log('🔐 Dealer Login  : DEALER402 / password123');
-    console.log('   Email         : dealer402@pds.local');
+    console.log('🔐 Dealer 1 Login : DEALER402 / password123');
+    console.log('   Email          : dealer402@pds.local');
+    console.log('🔐 Dealer 2 Login : DEALER505 / password123');
+    console.log('   Email          : dealer505@pds.local');
     console.log('──────────────────────────────────────────');
-    console.log('👤 Suresh (PHH)  : 3301010001 / password123');
-    console.log('   Email         : suresh@test.com');
-    console.log('👤 Mani (AAY)    : 3301010002 / password123');
-    console.log('   Email         : mani@test.com');
-    console.log('👤 Anitha (NPHH) : 3301010003 / password123');
-    console.log('   Email         : anitha@test.com');
+    console.log(`👤 ${users[0].name} (${users[0].cardType}) : ${users[0].rationCardNumber} / password123`);
+    console.log(`   Email          : ${users[0].email}`);
+    console.log(`👤 ${users[1].name} (${users[1].cardType}) : ${users[1].rationCardNumber} / password123`);
+    console.log(`   Email          : ${users[1].email}`);
+    console.log(`👤 ${users[2].name} (${users[2].cardType}) : ${users[2].rationCardNumber} / password123`);
+    console.log(`   Email          : ${users[2].email}`);
+    console.log('... and 29 more beneficiaries.');
     console.log('──────────────────────────────────────────');
 
   } catch (error) {

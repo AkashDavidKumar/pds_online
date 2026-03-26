@@ -64,7 +64,6 @@ export const updateInventory = async (req, res) => {
       reason
     });
 
-    console.log("✅ Inventory Refilled & Logged:", inventory);
 
     res.status(200).json({
       success: true,
@@ -72,7 +71,7 @@ export const updateInventory = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Inventory Update Error:", error);
+    // console.error("❌ Inventory Update Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

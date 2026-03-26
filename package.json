@@ -5,6 +5,8 @@
   "scripts": {
     "client": "cd pds-web-frontend && npm run dev",
     "server": "cd pds-backend && npm run dev",
+    "build": "cd pds-web-frontend && npm install && npm run build",
+    "start": "cd pds-backend && npm start",
     "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run client\"",
     "install:all": "npm install && cd pds-backend && npm install && cd ../pds-web-frontend && npm install",
     "seed": "cd pds-backend && node seed.js"

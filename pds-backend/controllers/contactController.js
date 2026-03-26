@@ -94,8 +94,6 @@ export const sendContactMessage = async (req, res) => {
     const adminInfo = await transporter.sendMail(adminMailOptions);
     const userInfo = await transporter.sendMail(userMailOptions);
 
-    console.log("✅ Admin Email sent:", adminInfo.response);
-    console.log("✅ User Confirmation Email sent:", userInfo.response);
 
     // ✅ Response
     res.status(200).json({
@@ -105,7 +103,7 @@ export const sendContactMessage = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Contact System Error:", error);
+    // console.error("❌ Contact System Error:", error);
 
     res.status(500).json({
       success: false,

@@ -67,7 +67,7 @@ export const sendOTP = async (req, res) => {
       message: `OTP dispatched to ${maskEmail(email)}`,
     });
   } catch (error) {
-    console.error('❌ sendOTP error:', error);
+    // console.error('❌ sendOTP error:', error);
     res.status(500).json({ message: error.message || 'Failed to send OTP' });
   }
 };
@@ -124,7 +124,7 @@ export const verifyOTP = async (req, res) => {
       code: 'OTP_VERIFIED',
     });
   } catch (error) {
-    console.error('❌ verifyOTP error:', error);
+    // console.error('❌ verifyOTP error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -198,7 +198,6 @@ export const distributeRation = async (req, res) => {
     slot.completedAt = new Date();
     await slot.save();
 
-    console.log("Saving transaction for user:", user._id);
 
     // Create Transaction Record (Single Source of Truth Ledger Entry)
     await Transaction.create({
@@ -259,17 +258,16 @@ export const distributeRation = async (req, res) => {
           date: now,
         });
       } catch (emailErr) {
-        console.error('⚠️  Receipt email failed (non-critical):', emailErr.message);
+        // console.error('⚠️  Receipt email failed (non-critical):', emailErr.message);
       }
     } else {
-      console.warn(`⚠️  No email on record for ${user.name} — receipt not sent.`);
+      // console.warn(`⚠️  No email on record for ${user.name} — receipt not sent.`);
     }
 
-    console.log("✅ Distribution Complete:", user.rationCardNumber);
     res.json({ success: true, message: 'Distribution finalized and reported to TNPDS server', receiptSent: !!user.email });
 
   } catch (error) {
-    console.error("❌ Distribution Error:", error);
+    // console.error("❌ Distribution Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -436,7 +434,7 @@ export const verifySlot = async (req, res) => {
         slotStatus: slot.status
       });
     } catch (error) {
-      console.error('❌ verifySlot error:', error);
+      // console.error('❌ verifySlot error:', error);
       res.status(500).json({ message: error.message });
     }
 };

@@ -24,13 +24,20 @@ import { errorHandler } from './middleware/error.middleware.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 
 // Connect to Database
 connectDB();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5002",
+    process.env.CLIENT_URL || "https://pds-frontend.onrender.com"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes

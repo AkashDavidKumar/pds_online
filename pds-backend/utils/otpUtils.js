@@ -68,12 +68,10 @@ export const sendOTPEmail = async (to, otp) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ OTP Email sent to ${to} — Message ID: ${info.messageId}`);
     return { success: true };
   } catch (err) {
-    console.error('❌ OTP Email send failed:', err.message);
+    // console.error('❌ OTP Email send failed:', err.message);
     // Dev fallback: log OTP to console so testing can continue
-    console.log(`[⚡ PDS OTP - EMAIL FALLBACK] To: ${to} | OTP: ${otp}`);
     throw new Error('Email delivery failed. Check EMAIL_USER / EMAIL_PASS in .env');
   }
 };
@@ -184,11 +182,10 @@ export const sendReceiptEmail = async (to, data) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ Receipt email sent to ${to} — ID: ${info.messageId}`);
     return { success: true };
   } catch (err) {
     // ⚠️  IMPORTANT: Do NOT re-throw — email failure must not break the transaction
-    console.error(`❌ Receipt email failed for ${to}:`, err.message);
+    // console.error(`❌ Receipt email failed for ${to}:`, err.message);
     return { success: false, error: err.message };
   }
 };

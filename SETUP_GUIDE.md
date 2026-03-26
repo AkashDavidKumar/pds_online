@@ -61,10 +61,12 @@ git --version
 The terminal is where you type commands.
 
 ### On Windows:
+
 - Press **`Win + R`**, type `cmd`, press Enter
-- **OR** open **VS Code** and press `` Ctrl + ` `` (backtick) to open the built-in terminal
+- **OR** open **VS Code** and press ``Ctrl + ` `` (backtick) to open the built-in terminal
 
 ### On Mac:
+
 - Press **`Cmd + Space`**, type `Terminal`, press Enter
 
 ---
@@ -97,6 +99,7 @@ npm run install:all
 ```
 
 This single command installs packages for:
+
 - The root project (concurrently)
 - `pds-backend` (Express, Mongoose, Nodemailer, etc.)
 - `pds-web-frontend` (React, Vite, etc.)
@@ -126,6 +129,7 @@ EMAIL_PASS=your_gmail_app_password
 ```
 
 ### How to get `EMAIL_PASS` (Gmail App Password):
+
 1. Go to → https://myaccount.google.com/security
 2. Make sure **2-Step Verification** is ON
 3. Go to → https://myaccount.google.com/apppasswords
@@ -187,10 +191,10 @@ Wait until you see:
 
 ## 🌐 Step 8: Open the App in Your Browser
 
-| What | URL |
-|---|---|
-| 🖥️ **Main App (Frontend)** | http://localhost:5173 |
-| ⚙️ **API Server (Backend)** | http://localhost:5002 |
+| What                               | URL                   |
+| ---------------------------------- | --------------------- |
+| 🖥️**Main App (Frontend)**  | http://localhost:5173 |
+| ⚙️**API Server (Backend)** | http://localhost:5002 |
 
 Open your browser and go to → **http://localhost:5173**
 
@@ -201,16 +205,18 @@ Open your browser and go to → **http://localhost:5173**
 Use these ready-made accounts:
 
 ### 🏪 Dealer Login (to distribute rations):
-| Field | Value |
-|---|---|
-| Ration Card | `DEALER402` |
-| Password | `password123` |
+
+| Field       | Value           |
+| ----------- | --------------- |
+| Ration Card | `DEALER402`   |
+| Password    | `password123` |
 
 ### 👤 Beneficiary Logins (to see user dashboard):
-| Name | Ration Card | Password |
-|---|---|---|
-| Suresh (PHH) | `3301010001` | `password123` |
-| Mani (AAY) | `3301010002` | `password123` |
+
+| Name          | Ration Card    | Password        |
+| ------------- | -------------- | --------------- |
+| Suresh (PHH)  | `3301010001` | `password123` |
+| Mani (AAY)    | `3301010002` | `password123` |
 | Anitha (NPHH) | `3301010003` | `password123` |
 
 ---
@@ -229,13 +235,13 @@ Use these ready-made accounts:
 
 ## ❌ Common Problems & Fixes
 
-| Problem | Fix |
-|---|---|
-| `EADDRINUSE: port 5002` | Backend already running. Close it or restart your terminal. |
-| `MongoNetworkError` | MongoDB is not running. Start it from Services or restart your PC. |
-| OTP email not received | Check `EMAIL_USER` and `EMAIL_PASS` in `.env`. Make sure Gmail App Password is used. |
-| `npm: command not found` | Node.js not installed or not added to PATH. Reinstall Node.js. |
-| Blank white page | Frontend failed to start. Check terminal for errors. |
+| Problem                    | Fix                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------ |
+| `EADDRINUSE: port 5002`  | Backend already running. Close it or restart your terminal.                                |
+| `MongoNetworkError`      | MongoDB is not running. Start it from Services or restart your PC.                         |
+| OTP email not received     | Check `EMAIL_USER` and `EMAIL_PASS` in `.env`. Make sure Gmail App Password is used. |
+| `npm: command not found` | Node.js not installed or not added to PATH. Reinstall Node.js.                             |
+| Blank white page           | Frontend failed to start. Check terminal for errors.                                       |
 
 ---
 

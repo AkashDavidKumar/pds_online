@@ -1,0 +1,29 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: pds-backend
+    env: node
+    rootDir: pds-backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5002
+      - key: MONGO_URI
+        sync: false # Set this in Render Dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: EMAIL_USER
+        sync: false # Set this in Render Dashboard
+      - key: EMAIL_PASS
+        sync: false # Set this in Render Dashboard
+
+  # Frontend Static Site
+  - type: static
+    name: pds-frontend
+    rootDir: pds-web-frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://pds-backend.onrender.com/api # Replace with your actual backend URL
