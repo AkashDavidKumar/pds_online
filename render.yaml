@@ -1,9 +1,7 @@
-services:
   # Backend Web Service
   - type: web
     name: pds-backend
     env: node
-    rootDir: pds-backend
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -26,4 +24,4 @@ services:
     publishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://pds-backend.onrender.com/api # Replace with your actual backend URL
+        value: https://pds-online.onrender.com/ # Replace with your actual backend URL
