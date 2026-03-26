@@ -1,15 +1,18 @@
 {
   "name": "pds-system",
   "version": "1.0.0",
+  "workspaces": [
+    "pds-backend",
+    "pds-web-frontend"
+  ],
   "description": "Tamil Nadu Digital Public Distribution System (TNPDS) — Full Stack",
   "scripts": {
-    "client": "cd pds-web-frontend && npm run dev",
-    "server": "cd pds-backend && npm run dev",
-    "build": "cd pds-web-frontend && npm run build",
-    "start": "cd pds-backend && node server.js",
-    "postinstall": "cd pds-backend && npm install && cd ../pds-web-frontend && npm install",
+    "client": "npm run dev -w pds-web-frontend",
+    "server": "npm run dev -w pds-backend",
+    "build": "npm run build -w pds-web-frontend",
+    "start": "node pds-backend/server.js",
     "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run client\"",
-    "install:all": "npm install && cd pds-backend && npm install && cd ../pds-web-frontend && npm install",
+    "install:all": "npm install",
     "seed": "cd pds-backend && node seed.js"
   },
   "dependencies": {
