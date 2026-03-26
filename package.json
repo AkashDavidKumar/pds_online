@@ -1,24 +1,36 @@
 {
   "name": "pds-system",
   "version": "1.0.0",
-  "workspaces": [
-    "pds-backend",
-    "pds-web-frontend"
-  ],
   "description": "Tamil Nadu Digital Public Distribution System (TNPDS) — Full Stack",
   "scripts": {
-    "client": "npm run dev -w pds-web-frontend",
-    "server": "npm run dev -w pds-backend",
-    "build": "npm run build -w pds-web-frontend",
+    "client": "cd pds-web-frontend && npm run dev",
+    "server": "cd pds-backend && npm run dev",
+    "build": "cd pds-web-frontend && npm run build",
     "start": "node pds-backend/server.js",
-    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run client\"",
     "install:all": "npm install",
-    "seed": "cd pds-backend && node seed.js"
+    "seed": "cd pds-backend && node seed.js",
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run client\""
   },
   "dependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "express": "^4.18.2",
+    "mongoose": "^7.6.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^8.0.3",
+    "bcryptjs": "^2.4.3",
+    "qrcode": "^1.5.4",
+    "pdfkit": "^0.17.2",
+    "json2csv": "^6.0.0-alpha.2"
   },
-  "keywords": ["pds", "ration-system", "nodejs", "react", "mongodb"],
+  "keywords": [
+    "pds",
+    "ration-system",
+    "nodejs",
+    "react",
+    "mongodb"
+  ],
   "author": "Akash David Kumar",
-  "license": "ISC"
+  "license": "MIT"
 }
